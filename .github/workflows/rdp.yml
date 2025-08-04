@@ -1,76 +1,22 @@
-# This workflow sets up a temporary RDP session on a Windows runner.
-# It is designed to be triggered manually via the 'workflow_dispatch' event.
 
 name: RDP
+
 on: [workflow_dispatch]
 
 jobs:
   build:
-    # Set a timeout for the entire job. The job will be canceled after this time.
-    # The maximum is 360 minutes (6 hours).
-    timeout-minutes: 360
     runs-on: windows-latest
-
     steps:
-      - name: Setup RDP User
-        # Use PowerShell to create the user and enable RDP.
-        # It's critical to use GitHub Secrets for the password.
-        # This prevents sensitive information from being stored in the code.
-        shell: pwsh
-        env:
-          RDP_USER: ${{ secrets.RDP_USER }}
-          RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
+      - name: Download ngrok
         run: |
-          if (-not $env:RDP_USER -or -not $env:RDP_PASSWORD) {
-            Write-Host "Error: GitHub secrets for RDP_USER and RDP_PASSWORD are not set."
-            exit 1
-          }
-          Write-Host "Creating RDP user '$env:RDP_USER'..."
-          net user $env:RDP_USER $env:RDP_PASSWORD /add
-          net localgroup administrators $env:RDP_USER /add
-          Write-Host "RDP user created."
-
-      - name: Enable RDP and Firewall
-        shell: pwsh
-        run: |
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
-          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          Write-Host "RDP enabled and firewall rule configured."
-
-      - name: Download and Configure ngrok
-        # This step downloads ngrok and configures it with your auth token from secrets.
-        # Replace the hardcoded auth token with a secret.
-        shell: pwsh
-        env:
-          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-        run: |
-          if (-not $env:NGROK_AUTH_TOKEN) {
-            Write-Host "Error: GitHub secret NGROK_AUTH_TOKEN is not set."
-            exit 1
-          }
           Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
           Expand-Archive ngrok.zip
-          ./ngrok.exe authtoken $env:NGROK_AUTH_TOKEN
+          ./ngrok.exe authtoken YOUR_AUTH_TOKEN
 
-      - name: Start ngrok TCP tunnel for RDP
-        # This is the most important step. It starts the ngrok tunnel and then
-        # keeps the job running indefinitely so you have time to connect.
-        shell: pwsh
+      - name: Enable RDP
         run: |
-          Write-Host "Starting ngrok TCP tunnel on port 3389..."
-          Start-Process -FilePath "./ngrok.exe" -ArgumentList "tcp 3389"
-          Write-Host "Waiting for ngrok tunnel to become active..."
-          Start-Sleep -Seconds 10 # Give ngrok a moment to start
-          
-          # Use ngrok's API to get the public URL and display it.
-          $response = Invoke-WebRequest -Uri "http://127.0.0.1:4040/api/tunnels" -UseBasicParsing
-          $data = ConvertFrom-Json $response.Content
-          $publicUrl = $data.tunnels[0].public_url
-          Write-Host "--------------------------------------------------------"
-          Write-Host "RDP is ready! Connect using this address:"
-          Write-Host "$publicUrl"
-          Write-Host "--------------------------------------------------------"
-          
-          # Use a loop to keep the job alive.
-          Write-Host "The workflow will run until the timeout is reached."
-          while ($true) { Start-Sleep -Seconds 60 }
+          net user kamel123 MyStrong123 /add
+          net localgroup administrators kamel123 /add
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+         
